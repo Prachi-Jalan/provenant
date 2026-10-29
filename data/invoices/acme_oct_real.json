@@ -1,0 +1,3 @@
+{"vendor": "Acme", "month": "October", "amount": 500, "currency": "USDC",
+ "pay_to": "0xacce000000000000000000000000000000000001",
+ "note": "Thanks for your business!"}

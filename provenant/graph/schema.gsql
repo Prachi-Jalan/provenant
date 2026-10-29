@@ -1,0 +1,28 @@
+# Provenant graph schema (TigerGraph GSQL). Run by setup_tigergraph.py, or paste into
+# Savanna's GSQL editor if the script fails.
+#
+# Vertices = "things", edges = "relationships between things".
+#   Wallet        a crypto address. flagged = known scammer.
+#   Payee         someone the owner pays (Rahul, Acme). kind = contact | vendor
+#   Source        who sent a piece of content (telegram:stranger_42). Used later.
+#   AttackPattern a known scam message. Embedding added in step 3.
+#
+#   SENT_TO   Wallet - Wallet   money moved between two wallets (undirected: we only
+#                               care that they are connected)
+#   PAID_AT   Payee  -> Wallet  "we have paid Acme at this address N times"
+#   MENTIONS  Source -> Wallet  "this sender mentioned this address"
+#   USES      AttackPattern -> Wallet  "this scam pointed people to this address"
+
+USE GLOBAL
+
+CREATE VERTEX Wallet (PRIMARY_ID address STRING, flagged BOOL, label STRING) WITH primary_id_as_attribute="true"
+CREATE VERTEX Payee (PRIMARY_ID pname STRING, kind STRING) WITH primary_id_as_attribute="true"
+CREATE VERTEX Source (PRIMARY_ID sender STRING, trust STRING) WITH primary_id_as_attribute="true"
+CREATE VERTEX AttackPattern (PRIMARY_ID attack_id STRING, text STRING, category STRING) WITH primary_id_as_attribute="true"
+
+CREATE UNDIRECTED EDGE SENT_TO (FROM Wallet, TO Wallet)
+CREATE DIRECTED EDGE PAID_AT (FROM Payee, TO Wallet, times INT)
+CREATE DIRECTED EDGE MENTIONS (FROM Source, TO Wallet)
+CREATE DIRECTED EDGE USES (FROM AttackPattern, TO Wallet)
+
+CREATE GRAPH provenant (Wallet, Payee, Source, AttackPattern, SENT_TO, PAID_AT, MENTIONS, USES)

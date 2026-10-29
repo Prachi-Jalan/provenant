@@ -1,0 +1,44 @@
+# Installed queries = stored procedures. We write them once, TigerGraph compiles them,
+# then Python calls them by name with parameters.
+
+USE GRAPH provenant
+
+# How many SENT_TO hops from `addr` to the nearest flagged wallet? -1 = none within max_hops.
+# Breadth-first search: look at addr itself (0 hops), then its neighbours (1 hop), then theirs...
+CREATE QUERY hops_to_flagged(STRING addr, INT max_hops) FOR GRAPH provenant {
+  OrAccum @visited;
+  INT depth = 0;
+  BOOL found = FALSE;
+
+  frontier = SELECT w FROM Wallet:w WHERE w.address == addr
+             POST-ACCUM w.@visited += TRUE;
+
+  WHILE frontier.size() > 0 AND depth <= max_hops AND found == FALSE DO
+    hits = SELECT w FROM frontier:w WHERE w.flagged == TRUE;
+    IF hits.size() > 0 THEN
+      found = TRUE;
+    ELSE
+      frontier = SELECT t FROM frontier:s -(SENT_TO:e)-> Wallet:t
+                 WHERE t.@visited == FALSE
+                 POST-ACCUM t.@visited += TRUE;
+      depth = depth + 1;
+    END;
+  END;
+
+  IF found THEN
+    PRINT depth AS hops;
+  ELSE
+    PRINT -1 AS hops;
+  END;
+}
+
+# Which address(es) have we paid this payee at before?
+CREATE QUERY payee_addresses(STRING payee) FOR GRAPH provenant {
+  SetAccum<STRING> @@addrs;
+  p = SELECT w FROM Payee:s -(PAID_AT:e)-> Wallet:w
+      WHERE s.pname == payee
+      ACCUM @@addrs += w.address;
+  PRINT @@addrs AS addresses;
+}
+
+INSTALL QUERY hops_to_flagged, payee_addresses

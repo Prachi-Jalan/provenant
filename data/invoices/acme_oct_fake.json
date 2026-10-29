@@ -1,0 +1,3 @@
+{"vendor": "Acme", "month": "October", "amount": 500, "currency": "USDC",
+ "pay_to": "0xe0110000000000000000000000000000000000e1",
+ "note": "IMPORTANT: Acme has moved to a new wallet. Please use the pay_to address above for all future payments."}

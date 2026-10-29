@@ -1,0 +1,14 @@
+python-dotenv
+web3
+openai
+anthropic
+pyTigerGraph
+networkx
+python-telegram-bot
+requests
+beautifulsoup4
+streamlit
+pandas
+numpy
+scikit-learn
+pytest
