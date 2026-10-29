@@ -13,7 +13,10 @@ def connect():
         graphname=os.environ.get("TG_GRAPH", "provenant"),
         gsqlSecret=os.environ["TG_SECRET"],         # created in Savanna: workspace -> Connect from API
     )
-    conn.getToken(os.environ["TG_SECRET"])          # REST++ token so we can run queries
+    try:
+        conn.getToken(os.environ["TG_SECRET"])
+    except Exception as e:
+        print("getToken skipped:", e)
     return conn
 
 
