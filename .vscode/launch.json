@@ -1,0 +1,96 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "P1: wallet balances",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "provenant.chain.wallet",
+      "args": [
+        "--balances"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "P1: send 1 USDC (milestone, LIVE)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "provenant.chain.wallet",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Demo: 5 scenarios (naive agent, firewall ON, dry run)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "demo.run_scenarios",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Demo: UNPROTECTED (agent gets fooled)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "demo.run_scenarios",
+      "args": [
+        "--unprotected"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Demo: LLM agent (needs API key)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "demo.run_scenarios",
+      "args": [
+        "--agent",
+        "llm"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Setup: create 3 test wallets",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/setup_wallets.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Bot: Telegram (dry run, safe)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "bot.telegram_bot",
+      "args": [
+        "--dry-run"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Bot: Telegram (dry run, naive agent)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "bot.telegram_bot",
+      "args": [
+        "--dry-run",
+        "--agent",
+        "naive"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Bot: Telegram (follows .env, may be LIVE)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "bot.telegram_bot",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
