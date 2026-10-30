@@ -33,6 +33,7 @@ def test_reputation_stub_is_importable():
 def test_eval_cases_match_contract():
     for line in (ROOT / "eval" / "cases.jsonl").read_text().splitlines():
         case = json.loads(line)
-        assert case["expected"] in {d.value for d in Decision}
+        assert case["type"] in {"attack", "legit", "edge"}
+        assert case["expected"] and set(case["expected"]) <= {d.value for d in Decision}
         for c in case["contents"]:
             ContentItem(**c)
