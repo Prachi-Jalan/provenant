@@ -41,9 +41,9 @@ else:
 
 with st.sidebar:
     st.header("Controls")
-    if st.button("Load demo scenarios", help="Runs all 32 eval scenarios through the firewall and logs the verdicts"):
-        from demo.run_scenarios import main as run_demo
-        run_demo(live=bool(os.getenv("TG_HOST")))
+    if st.button("Load eval scenarios", help="Runs all 32 eval scenarios through the firewall and logs the verdicts"):
+        from eval.log_eval_verdicts import main as log_eval
+        log_eval(live=bool(os.getenv("TG_HOST")))
         st.rerun()
     st.caption(f"Graph backend: {'live TigerGraph' if os.getenv('TG_HOST') else 'local fallback'}")
 
@@ -53,7 +53,7 @@ tab_live, tab_eval, tab_graph = st.tabs(["Decisions", "Evaluation", "TigerGraph 
 with tab_live:
     verdicts = read_verdicts()
     if not verdicts:
-        st.info("No decisions logged yet. Click **Load demo scenarios** in the sidebar, or run the bot.")
+        st.info("No decisions logged yet. Click **Load eval scenarios** in the sidebar, run `python -m demo.run_scenarios`, or use the bot.")
     else:
         counts = data.decision_counts(verdicts)
         cols = st.columns(4)
@@ -72,7 +72,7 @@ with tab_live:
                 c.markdown(f"**Risk** {row['risk']}")
                 if row["tx_link"]:
                     st.markdown(f"[View on BaseScan]({row['tx_link']})")
-                st.dataframe(pd.DataFrame(data.check_rows(row["raw"])), hide_index=True, use_container_width=True)
+                st.dataframe(pd.DataFrame(data.check_rows(row["raw"])), hide_index=True, width="stretch")
 
 # ---------------------------------------------------------------- evaluation
 with tab_eval:
@@ -80,7 +80,7 @@ with tab_eval:
         st.info("Run `python -m eval.run_eval` first.")
     else:
         st.subheader(f"{summary['cases']} scenarios, firewall vs no firewall vs ablations")
-        st.dataframe(pd.DataFrame(data.setup_table(summary)), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(data.setup_table(summary)), hide_index=True, width="stretch")
         st.subheader("Attacks each check stops on its own")
         strength = data.single_check_strength(summary)
         st.bar_chart(pd.Series(strength, name="attacks stopped"))
@@ -112,6 +112,6 @@ with tab_graph:
                 matches = reputation.similar_attacks(msg, k=3)
                 st.dataframe(pd.DataFrame([{"attack": m.attack_id, "type": m.category, "similarity": m.similarity,
                                             "wallets used": ", ".join(sorted(m.wallets))} for m in matches]),
-                             hide_index=True, use_container_width=True)
+                             hide_index=True, width="stretch")
         except Exception as e:
             st.error(f"Graph unavailable ({e.__class__.__name__}). Is the TigerGraph workspace running?")

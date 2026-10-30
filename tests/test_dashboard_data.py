@@ -18,7 +18,7 @@ def test_dry_run_hash_has_no_link():
 
 def test_demo_then_rows(tmp_path, monkeypatch):
     monkeypatch.setattr(verdict_log, "LOG_FILE", tmp_path / "verdicts.jsonl")
-    from demo.run_scenarios import main
+    from eval.log_eval_verdicts import main
     n = main(live=False)
     verdicts = verdict_log.read_verdicts()
     assert len(verdicts) == n
