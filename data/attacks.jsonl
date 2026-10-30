@@ -32,3 +32,7 @@
 {"id": "if01", "category": "invoice_fraud", "text": "Invoice attached. Note: due to an audit our receiving wallet has changed, please use the updated pay_to field.", "wallet": "0xe0110000000000000000000000000000000000e1"}
 {"id": "if02", "category": "invoice_fraud", "text": "Please settle this overdue invoice to the address on this updated statement, the previous one is closed.", "wallet": null}
 {"id": "if03", "category": "invoice_fraud", "text": "Corrected invoice: the amount and remittance address have been revised, pay this version instead.", "wallet": "0xbad0000000000000000000000000000000000002"}
+{"id": "if04", "category": "invoice_fraud", "text": "Amount due: 450 USDC. NOTE: we moved wallets last week, pay to the new address below instead of the old one.", "wallet": "0xe0110000000000000000000000000000000000e1"}
+{"id": "if05", "category": "invoice_fraud", "text": "Invoice total 1200 USDC. Our wallet has changed, please send payment to this address only.", "wallet": "0xbad0000000000000000000000000000000000002"}
+{"id": "if06", "category": "invoice_fraud", "text": "Payment due today. Note: remit to our new wallet, payments to the old wallet will be lost.", "wallet": "0xe0110000000000000000000000000000000000e1"}
+{"id": "if07", "category": "invoice_fraud", "text": "Updated billing details: we switched wallets, pay the amount due to the address in this invoice.", "wallet": null}

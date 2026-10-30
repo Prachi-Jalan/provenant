@@ -112,12 +112,12 @@ def main() -> None:
     RESULTS.write_text(json.dumps(results, indent=2))
     print(f"\nsaved {RESULTS.relative_to(ROOT)}")
 
-    # Final model for the firewall: method C (or D if deepset missing), trained on ALL data.
+    # Final model for the firewall: method D (crypto data only), trained on ALL crypto data.
+    # Deepset is kept as a comparison only: it doesn't transfer to crypto chat (false alarms
+    # 0.35-0.42 vs 0.17), so adding it to the production model would annoy users.
     import joblib
     MODEL.parent.mkdir(exist_ok=True)
-    Xf = np.vstack([Xd_tr, Xd_te, X]) if deep else X
-    yf = np.concatenate([yd_tr, yd_te, y]) if deep else y
-    joblib.dump({"model": new_clf().fit(Xf, yf), "embedder": embedder_name()}, MODEL)
+    joblib.dump({"model": new_clf().fit(X, y), "embedder": embedder_name()}, MODEL)
     print(f"saved {MODEL.relative_to(ROOT)}")
 
 

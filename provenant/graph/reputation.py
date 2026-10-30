@@ -71,6 +71,9 @@ def attack_pattern_check(tx: ProposedTx, contents: list[ContentItem]) -> CheckRe
         return CheckResult("attack_pattern", True,
                            f"attack search unavailable ({e.__class__.__name__})", hard=False)
 
+    if best is None:  # attack index empty or returned nothing for every message
+        return CheckResult("attack_pattern", True, "no known attack patterns to compare against",
+                           score=0.0, hard=False)
     c, m = best
     if m.similarity >= threshold():
         return CheckResult("attack_pattern", False,
