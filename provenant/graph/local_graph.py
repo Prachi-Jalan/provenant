@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import networkx as nx
 
+from .attacks import AttackMatch, load_attacks
+from .embeddings import cosine, embed
 from .seed import build
 
 
@@ -30,3 +32,14 @@ class LocalGraph:
 
     def payee_addresses(self, payee: str) -> set[str]:
         return self.paid_at.get(payee.lower(), set())
+
+    def similar_attacks(self, query_vec: list[float], k: int = 3) -> list[AttackMatch]:
+        """Brute-force cosine search over every known attack (fine for ~50 items)."""
+        if not hasattr(self, "_attacks"):
+            self._attacks = load_attacks()
+            self._vecs = embed([a["text"] for a in self._attacks])
+        scored = sorted(zip((cosine(query_vec, v) for v in self._vecs), self._attacks),
+                        key=lambda p: p[0], reverse=True)[:k]
+        return [AttackMatch(a["id"], round(s, 3), a["category"],
+                            frozenset([a["wallet"]] if a.get("wallet") else []))
+                for s, a in scored]

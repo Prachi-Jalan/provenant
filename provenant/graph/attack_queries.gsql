@@ -1,0 +1,26 @@
+# Hybrid search: vector similarity (meaning) + graph traversal (relationships), in ONE query.
+#   1. vectorSearch finds the k known attacks whose wording is closest to the new message.
+#   2. Then we walk their USES edges to see which wallets those attacks pointed people to.
+# So one call answers: "does this look like a known scam, and which wallets are behind it?"
+
+USE GRAPH provenant
+
+CREATE OR REPLACE QUERY similar_attacks(LIST<FLOAT> qv, INT k) FOR GRAPH provenant SYNTAX v3 {
+  TYPEDEF TUPLE<STRING attack_id, STRING category, FLOAT distance> Hit;
+  MapAccum<VERTEX, FLOAT> @@dist;
+  ListAccum<Hit> @@matches;
+  MapAccum<STRING, SetAccum<STRING>> @@wallets;
+
+  R = vectorSearch({AttackPattern.embedding}, qv, k, {distance_map: @@dist});
+
+  X = SELECT a FROM (a:R)
+      POST-ACCUM @@matches += Hit(a.attack_id, a.category, @@dist.get(a));
+
+  W = SELECT a FROM (a:R)-[e:USES]->(w:Wallet)
+      ACCUM @@wallets += (a.attack_id -> w.address);
+
+  PRINT @@matches AS matches;
+  PRINT @@wallets AS wallets;
+}
+
+INSTALL QUERY similar_attacks
