@@ -176,3 +176,25 @@ def reputation(tx: ProposedTx, policy: Policy) -> CheckResult:
     except Exception as e:
         # An outage shouldn't block every payment, but it should raise risk.
         return CheckResult("reputation", False, f"Reputation service unavailable ({type(e).__name__}).", hard=False)
+
+
+# ---------------------------------------------------------------- attack pattern (owned by P3)
+
+def attack_pattern(tx: ProposedTx, contents: list[ContentItem]) -> CheckResult:
+    """Calls P3's graph.attack_pattern_check (vector search over known attacks).
+
+    P3's score = similarity to the closest known attack (higher = MORE suspicious).
+    Soft fail when only the wording matches; hard fail when the matched attack used this same wallet.
+    Stub until it exists; soft-fails if vector search is down.
+    """
+    try:
+        from provenant.graph import attack_pattern_check  # P3
+    except ImportError:
+        return CheckResult("attack_pattern", True, "Attack-pattern check not wired yet (stub).", hard=False)
+    try:
+        r = attack_pattern_check(tx, contents)
+        r.name = "attack_pattern"
+        return r
+    except Exception as e:
+        return CheckResult("attack_pattern", False, f"Attack-pattern search unavailable ({type(e).__name__}).",
+                           hard=False)
