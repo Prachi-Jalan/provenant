@@ -1,6 +1,6 @@
 """check(tx, policy, contents) -> Verdict. The only function the bot, eval and demo call.
 
-Flow: run 4 checks -> no hard fail = ALLOW
+Flow: run 5 checks -> no hard fail = ALLOW
       hard fail -> dangerous action or no owner request = BLOCK
                 -> safe repair possible = rebuild to the verified address, re-run ALL checks = REPAIRED
                 -> otherwise = ESCALATE (owner asked for something, but we can't make it safe alone)
@@ -11,11 +11,15 @@ from __future__ import annotations
 import math
 
 from provenant import records
-from provenant.firewall.checks import intent_check, policy_check, provenance_check, reputation
+from provenant.firewall.checks import attack_pattern, intent_check, policy_check, provenance_check, reputation
 from provenant.schemas import CheckResult, ContentItem, Decision, Policy, ProposedTx, Verdict
 
 # Risk weights for a failed check. Hand-set for now; P3's eval can learn these later.
-WEIGHTS = {"policy": 0.35, "provenance": 0.35, "reputation": 0.2, "intent": 0.3}
+WEIGHTS = {"policy": 0.35, "provenance": 0.35, "reputation": 0.2, "intent": 0.3, "attack_pattern": 0.2}
+
+# Checks whose `score` is already a risk (higher = worse), e.g. similarity to a known attack.
+# For every other check, `score` means "how good" (higher = better), like intent.
+SCORE_IS_RISK = {"attack_pattern"}
 
 
 def check(tx: ProposedTx, policy: Policy, contents: list[ContentItem]) -> Verdict:
@@ -62,6 +66,7 @@ def run_checks(tx: ProposedTx, policy: Policy, contents: list[ContentItem]) -> l
         provenance_check(tx, contents),
         intent_check(tx, policy),
         reputation(tx, policy),
+        attack_pattern(tx, contents),
     ]
 
 
@@ -86,7 +91,11 @@ def risk_score(checks: list[CheckResult]) -> float:
     risk = 0.0
     for c in checks:
         w = WEIGHTS.get(c.name, 0.2)
-        if c.score is not None:
+        if c.name in SCORE_IS_RISK:
+            # Only a failed match adds risk, scaled by how close it was. A pass adds nothing.
+            if not c.passed:
+                risk += w * (c.score if c.score is not None else 1.0)
+        elif c.score is not None:
             risk += w * (1.0 - c.score)
         elif not c.passed:
             risk += w
