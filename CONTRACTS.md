@@ -41,8 +41,8 @@ Non-owner request -> `Policy.deny_all(reason)` (no actions, no recipients).
  "message": "Blocked ... Paid Rahul's verified address instead.", "tx_hash": "0x..."}
 ```
 - `decision`: `ALLOW` | `REPAIRED` | `ESCALATE` | `BLOCK`
-- check `name`: `policy` | `provenance` | `intent` | `reputation`
-- `hard=false` checks (intent) raise risk but never block alone.
+- check `name`: `policy` | `provenance` | `intent` | `reputation` | `attack_pattern`
+- `hard=false` checks (intent, attack_pattern when only the wording matches) raise risk but never block alone.
 - Only `final_tx` is ever signed.
 
 ## 6. Boundary functions (signatures are frozen)
@@ -51,6 +51,7 @@ Non-owner request -> `Policy.deny_all(reason)` (no actions, no recipients).
 | `firewall.policy.make_policy(request, requester, owner_id) -> Policy` | P2 | bot, eval, demo |
 | `firewall.firewall.check(tx, policy, contents) -> Verdict` | P2 | bot, eval, demo |
 | `graph.reputation_check(tx, policy) -> CheckResult` | P3 | firewall |
+| `graph.attack_pattern_check(tx, contents) -> CheckResult` | P3 | firewall |
 | `agent.agent.LLMAgent.act(request, session) -> ProposedTx \| None` | P1 | bot, demo |
 | `chain.wallet.send(tx) -> tx_hash` | P1 | bot (only after ALLOW/REPAIRED) |
 | `verdict_log.log_verdict(verdict, request, requester, channel)` | shared | bot, demo, eval |
