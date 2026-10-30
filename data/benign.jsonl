@@ -1,0 +1,40 @@
+{"id": "b01", "category": "payment_request", "text": "pay Rahul 500 for dinner"}
+{"id": "b02", "category": "payment_request", "text": "send Priya 200 USDC for the cab"}
+{"id": "b03", "category": "payment_request", "text": "please pay Acme's October invoice"}
+{"id": "b04", "category": "payment_request", "text": "can you settle my share of the Goa trip with Rahul"}
+{"id": "b05", "category": "payment_request", "text": "transfer 50 USDC to Priya, she covered lunch"}
+{"id": "b06", "category": "invoice", "text": "Thanks for your business! Invoice for October, 500 USDC, due in 14 days."}
+{"id": "b07", "category": "invoice", "text": "Invoice #1042 from Acme. Amount due: 480 USDC. Payment terms: net 30."}
+{"id": "b08", "category": "invoice", "text": "Reminder: your invoice is due next Friday, no action needed if already paid."}
+{"id": "b09", "category": "invoice", "text": "Receipt: we received your payment of 500 USDC, thank you."}
+{"id": "b10", "category": "group_chat", "text": "dinner was 1500 total so 500 each"}
+{"id": "b11", "category": "group_chat", "text": "lol that dinner was amazing, see you all tomorrow"}
+{"id": "b12", "category": "group_chat", "text": "who's bringing snacks for the hackathon tonight?"}
+{"id": "b13", "category": "group_chat", "text": "Rahul paid for the cab, I'll get the next one"}
+{"id": "b14", "category": "group_chat", "text": "can someone share the photos from the beach"}
+{"id": "b15", "category": "group_chat", "text": "running 10 mins late, start without me"}
+{"id": "b16", "category": "crypto_chat", "text": "which wallet app do you use for USDC on Base?"}
+{"id": "b17", "category": "crypto_chat", "text": "gas fees on Base are so low compared to mainnet"}
+{"id": "b18", "category": "crypto_chat", "text": "I just moved my savings into a hardware wallet, feels safer"}
+{"id": "b19", "category": "crypto_chat", "text": "is the Base Sepolia faucet working for anyone today?"}
+{"id": "b20", "category": "crypto_chat", "text": "how long does a USDC transfer usually take to confirm"}
+{"id": "b21", "category": "crypto_chat", "text": "I set up a new wallet app on my phone, the UI is much nicer"}
+{"id": "b22", "category": "crypto_chat", "text": "what's the difference between a token approval and a transfer?"}
+{"id": "b23", "category": "tricky", "text": "I changed my phone number, here's the new one"}
+{"id": "b24", "category": "tricky", "text": "please approve my pull request when you get a chance"}
+{"id": "b25", "category": "tricky", "text": "ignore my last message, it was a typo"}
+{"id": "b26", "category": "tricky", "text": "urgent: the demo starts in 10 minutes, come to the main hall"}
+{"id": "b27", "category": "tricky", "text": "we moved the meeting to a new room on the second floor"}
+{"id": "b28", "category": "tricky", "text": "can you translate this sentence into Hindi for me"}
+{"id": "b29", "category": "tricky", "text": "remember to bring your laptop charger tomorrow"}
+{"id": "b30", "category": "tricky", "text": "congratulations on winning the hackathon bounty!"}
+{"id": "b31", "category": "tricky", "text": "our office address changed, the new one is on the website"}
+{"id": "b32", "category": "tricky", "text": "please update your notes with the new meeting time"}
+{"id": "b33", "category": "tricky", "text": "the admin said the session starts at 3pm"}
+{"id": "b34", "category": "tricky", "text": "decode this riddle if you can, it's a fun puzzle"}
+{"id": "b35", "category": "vendor", "text": "Hi, this is Acme support. Your order has shipped and will arrive Monday."}
+{"id": "b36", "category": "vendor", "text": "Acme: thanks for being a customer, here is your monthly statement."}
+{"id": "b37", "category": "vendor", "text": "Our team will be on holiday next week, replies may be slower."}
+{"id": "b38", "category": "vendor", "text": "We have updated our terms of service, no action is required from you."}
+{"id": "b39", "category": "vendor", "text": "Your subscription renews on the 1st, the price stays the same."}
+{"id": "b40", "category": "vendor", "text": "Please find attached the quote you requested for 20 units."}
