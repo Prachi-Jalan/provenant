@@ -1,9 +1,10 @@
 """check(tx, policy, contents) -> Verdict. The only function the bot, eval and demo call.
 
-Flow: run 5 checks -> no hard fail = ALLOW
+Flow: run 6 checks -> no hard fail = ALLOW
       hard fail -> dangerous action or no owner request = BLOCK
                 -> safe repair possible = rebuild to the verified address, re-run ALL checks = REPAIRED
-                -> otherwise = ESCALATE (owner asked for something, but we can't make it safe alone)
+                -> otherwise = ESCALATE (owner asked for something, but we can't make it safe alone),
+                   e.g. the payee themself says their wallet changed (claim check blocks repair)
 Only verdict.final_tx is ever signed, and only for ALLOW / REPAIRED.
 """
 from __future__ import annotations
@@ -12,10 +13,12 @@ import math
 
 from provenant import records
 from provenant.firewall.checks import attack_pattern, intent_check, policy_check, provenance_check, reputation
+from provenant.firewall.claims import claim_check
 from provenant.schemas import CheckResult, ContentItem, Decision, Policy, ProposedTx, Verdict
 
 # Risk weights for a failed check. Hand-set for now; P3's eval can learn these later.
-WEIGHTS = {"policy": 0.35, "provenance": 0.35, "reputation": 0.2, "intent": 0.3, "attack_pattern": 0.2}
+WEIGHTS = {"policy": 0.35, "provenance": 0.35, "reputation": 0.2, "intent": 0.3, "attack_pattern": 0.2,
+           "claim": 0.3}
 
 # Checks whose `score` is already a risk (higher = worse), e.g. similarity to a known attack.
 # For every other check, `score` means "how good" (higher = better), like intent.
@@ -67,6 +70,7 @@ def run_checks(tx: ProposedTx, policy: Policy, contents: list[ContentItem]) -> l
         intent_check(tx, policy),
         reputation(tx, policy),
         attack_pattern(tx, contents),
+        claim_check(tx, policy, contents),
     ]
 
 

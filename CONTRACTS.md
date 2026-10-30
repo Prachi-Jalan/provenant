@@ -41,7 +41,7 @@ Non-owner request -> `Policy.deny_all(reason)` (no actions, no recipients).
  "message": "Blocked ... Paid Rahul's verified address instead.", "tx_hash": "0x..."}
 ```
 - `decision`: `ALLOW` | `REPAIRED` | `ESCALATE` | `BLOCK`
-- check `name`: `policy` | `provenance` | `intent` | `reputation` | `attack_pattern`
+- check `name`: `policy` | `provenance` | `intent` | `reputation` | `attack_pattern` | `claim`
 - `hard=false` checks (intent, attack_pattern when only the wording matches) raise risk but never block alone.
 - Only `final_tx` is ever signed.
 
@@ -52,6 +52,7 @@ Non-owner request -> `Policy.deny_all(reason)` (no actions, no recipients).
 | `firewall.firewall.check(tx, policy, contents) -> Verdict` | P2 | bot, eval, demo |
 | `graph.reputation_check(tx, policy) -> CheckResult` | P3 | firewall |
 | `graph.attack_pattern_check(tx, contents) -> CheckResult` | P3 | firewall |
+| `firewall.claims.claim_check(tx, policy, contents) -> CheckResult` | P2 | firewall |
 | `agent.agent.LLMAgent.act(request, session) -> ProposedTx \| None` | P1 | bot, demo |
 | `chain.wallet.send(tx) -> tx_hash` | P1 | bot (only after ALLOW/REPAIRED) |
 | `verdict_log.log_verdict(verdict, request, requester, channel)` | shared | bot, demo, eval |
