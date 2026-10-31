@@ -13,5 +13,13 @@
     "business": "Tanishk's Kitchen",
     "role": "caterer",
     "balance_due": 45
+  },
+  "Swift Couriers": {
+    "address": "0x5c1f700000000000000000000000000000000a2b",
+    "typical_min": 20,
+    "typical_max": 80,
+    "paid_count": 4,
+    "business": "Swift Couriers",
+    "role": "courier, deliveries"
   }
 }

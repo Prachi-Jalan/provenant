@@ -51,6 +51,9 @@ def learn_from(verdict: Verdict, contents: list[ContentItem], request: str = "")
     """Write this attack into the graph. Returns the record ({"new": bool, ...}) or None."""
     if verdict is None or verdict.decision not in (Decision.BLOCK, Decision.REPAIRED):
         return None
+    pol = next((c for c in verdict.checks if c.name == "policy"), None)
+    if pol is not None and "not in trusted contacts or vendors" in pol.reason:
+        return None  # an unknown payee isn't proof of an attack; flagging them would poison the graph
     prov = next((c for c in verdict.checks if c.name == "provenance"), None)
     if prov is None or prov.passed:
         return None
