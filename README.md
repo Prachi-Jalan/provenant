@@ -16,7 +16,8 @@ Owner request ─▶ make_policy ─▶ Policy (verified recipient, cap, one use
 Agent reads chats/invoices/web ─▶ ProposedTx (agent holds NO key)
                                    │
                          firewall.check
-          policy · provenance · intent (LLM) · reputation (TigerGraph)
+   policy · provenance (taint graph) · intent (LLM) · reputation (TigerGraph)
+              · attack pattern (TigerGraph vectors) · claim
                                    │
           ALLOW / REPAIRED ─▶ sign on Base Sepolia ─▶ BaseScan link
           ESCALATE ─▶ ask owner      BLOCK ─▶ nothing reaches the chain
@@ -30,12 +31,14 @@ Agent reads chats/invoices/web ─▶ ProposedTx (agent holds NO key)
 | `provenant/chain/` | Wallet, send, ERC-20 decode | P1 |
 | `provenant/agent/` | Agent tools, NaiveAgent, LLM agent | P1 |
 | `provenant/firewall/` | Policy, checks, decision + repair | P2 |
-| `provenant/graph/` | TigerGraph reputation + attack vector search | P3 |
+| `provenant/graph/` | TigerGraph: reputation, attack vector search, taint graph, attack memory | P3 |
+| `provenant/resolve.py` | "pay the guy who catered for my birthday" -> payee, from the owner's records only | P3 |
+| `provenant/pdf_reader.py` | PDF text extraction (hidden text included, and flagged) | P3 |
 | `bot/` | Telegram bot | P1 (A) |
-| `dashboard/` | Streamlit dashboard | P3 |
+| `dashboard/` | Streamlit dashboard | P2 (demo screen), P1 (`chat.py`) |
 | `eval/` | Test cases + evaluation harness | P3 |
 | `demo/` | End-to-end scenario runner | all |
-| `data/` | Seed data (contacts, vendors, flagged wallets, invoices) | all |
+| `data/` | Seed data (contacts, vendors, history/calendar, flagged wallets, attack examples, invoices incl. PDFs) | all |
 
 ## Setup
 ```bash
@@ -74,6 +77,25 @@ python -m eval.run_eval               # numbers table
 python -m bot.telegram_bot --dry-run  # Telegram bot, nothing is sent (drop --dry-run to follow .env)
 streamlit run dashboard/app.py        # dashboard
 ```
+
+## Person 3 quickstart: TigerGraph + eval
+
+Put `TG_HOST`, `TG_GRAPH=provenant`, `TG_SECRET`, `EMBEDDER=hash` in `.env`, make sure the Savanna
+workspace is **running**, then run once, in this order (every step is safe to re-run):
+```bash
+python -m provenant.graph.setup_tigergraph          # schema, wallets, payees, transfers, hops + payee queries
+python -m provenant.graph.setup_attack_vectors      # attack messages + vectors, hybrid similar_attacks query
+python -m provenant.graph.setup_taint_and_memory    # Content/DERIVED_FROM types, trace_origin + wallet_neighbourhood
+python -m eval.run_eval                             # 33 scenarios, every check removed / alone
+```
+Without `TG_HOST` (or while the workspace is asleep) every graph call answers from an identical
+in-memory copy (`local_graph.py`), so tests and demos never depend on the network.
+
+What TigerGraph answers for every payment:
+- **Follow the money** (`hops_to_flagged`, `payee_addresses`): is this wallet near known scammers? have we paid this payee here before?
+- **Follow the information** (`trace_origin`): every copy of the address traced back through forwards/quotes to its first source. A forwarded scam stays untrusted.
+- **Seen this scam before?** (`similar_attacks`): TigerVector search over known attack messages + walk to the wallets they used, in one query.
+- **Attack memory** (`learn.py`): every attack Provenant stops is written back (wallet flagged, message + vector saved, linked to its sender). Claims from untrusted content never become facts (no PAID_AT edges from what an invoice says).
 
 ## Telegram bot (`bot/telegram_bot.py`)
 One-time setup:

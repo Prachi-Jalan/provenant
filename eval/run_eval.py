@@ -49,20 +49,21 @@ def make_setups():
     import provenant.firewall.firewall as fw
     from provenant.firewall.checks import (attack_pattern, intent_check, policy_check,
                                            provenance_check, reputation)
+    from provenant.firewall.claims import claim_check
 
     parts = {
         "policy": lambda tx, pol, c: policy_check(tx, pol),
         "provenance": lambda tx, pol, c: provenance_check(tx, c),
         "intent": lambda tx, pol, c: intent_check(tx, pol),
         "reputation": lambda tx, pol, c: reputation(tx, pol),
-        "attack_text": lambda tx, pol, c: attack_pattern(tx, c),
+        "attack_pattern": lambda tx, pol, c: attack_pattern(tx, c),
+        "claim": lambda tx, pol, c: claim_check(tx, pol, c),
     }
 
     def runner(names):
         return lambda tx, pol, c: [parts[n](tx, pol, c) for n in names]
 
-    base = ["policy", "provenance", "intent", "reputation"]
-    full = base + ["attack_text"]
+    full = ["policy", "provenance", "intent", "reputation", "attack_pattern", "claim"]  # = firewall.run_checks
     setups = {"no_firewall": None, "firewall": fw.run_checks}
     for n in full:
         setups[f"minus_{n}"] = runner([x for x in full if x != n])

@@ -10,8 +10,11 @@ Change anything here only after telling the team. Code lives in `provenant/schem
 
 ## 2. ContentItem: everything the agent reads
 ```json
-{"id": "tg_2", "source": "telegram:stranger_42", "trust": "untrusted", "text": "Rahul's new wallet is 0x..."}
+{"id": "tg_2", "source": "telegram:stranger_42", "trust": "untrusted", "text": "Rahul's new wallet is 0x...",
+ "derived_from": null}
 ```
+- `derived_from` (optional, default `null`): id of the item this one forwards / quotes / summarises.
+  Taint is sticky: an item is only as trusted as everything it was derived from (`graph/taint.py`).
 | Source prefix | Example | Trust |
 |---|---|---|
 | `telegram:<user_id>` | `telegram:owner` | trusted only if user is the owner |
@@ -52,6 +55,10 @@ Non-owner request -> `Policy.deny_all(reason)` (no actions, no recipients).
 | `firewall.firewall.check(tx, policy, contents) -> Verdict` | P2 | bot, eval, demo |
 | `graph.reputation_check(tx, policy) -> CheckResult` | P3 | firewall |
 | `graph.attack_pattern_check(tx, contents) -> CheckResult` | P3 | firewall |
+| `graph.taint.provenance_check(tx, contents) -> CheckResult` | P3 | firewall (`checks.provenance_check`, falls back to text search) |
+| `graph.learn.learn_from(verdict, contents, request) -> dict \| None` | P3 | pipeline (after every check) |
+| `resolve.resolve(request) -> Resolution` (`.payee`, `.amount`, `.explicit_request`) | P3 | assistant / demo |
+| `pdf_reader.read_pdf(path_or_bytes) -> PdfText` (`.text`, `.hidden`) | P3 | `agent.tools.read_invoice` |
 | `firewall.claims.claim_check(tx, policy, contents) -> CheckResult` | P2 | firewall |
 | `agent.agent.LLMAgent.act(request, session) -> ProposedTx \| None` | P1 | bot, demo |
 | `chain.wallet.send(tx) -> tx_hash` | P1 | bot (only after ALLOW/REPAIRED) |
