@@ -1,0 +1,28 @@
+# Wallets within `depth` SENT_TO hops of addr, for the dashboard's graph picture.
+USE GRAPH provenant
+
+CREATE OR REPLACE QUERY wallet_neighbourhood(STRING addr, INT depth) FOR GRAPH provenant {
+  TYPEDEF TUPLE<STRING address, BOOL flagged> W;
+  TYPEDEF TUPLE<STRING a, STRING b> L;
+  OrAccum @seen;
+  SetAccum<W> @@wallets;
+  SetAccum<L> @@links;
+  INT d = 0;
+
+  frontier = SELECT w FROM Wallet:w WHERE w.address == addr
+             POST-ACCUM w.@seen += TRUE, @@wallets += W(w.address, w.flagged);
+
+  WHILE frontier.size() > 0 AND d < depth DO
+    frontier = SELECT t FROM frontier:s -(SENT_TO:e)-> Wallet:t
+               ACCUM @@links += L(s.address, t.address)
+               POST-ACCUM @@wallets += W(t.address, t.flagged)
+               HAVING t.@seen == FALSE;
+    frontier = SELECT t FROM frontier:t POST-ACCUM t.@seen += TRUE;
+    d = d + 1;
+  END;
+
+  PRINT @@wallets AS wallets;
+  PRINT @@links AS links;
+}
+
+INSTALL QUERY wallet_neighbourhood

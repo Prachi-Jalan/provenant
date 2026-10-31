@@ -2,6 +2,8 @@
 
 Schema + queries: schema.gsql, queries.gsql. Setup: setup_tigergraph.py.
 Backend: TigerGraph when TG_HOST is set in .env, else the local NetworkX copy.
+If TigerGraph is set but doesn't answer (e.g. the workspace is asleep), each call falls back
+to the local copy of the same graph, so the checks never silently disappear mid-demo.
 """
 import os
 
@@ -12,17 +14,83 @@ from .embeddings import embed, threshold
 _backend = None
 
 
+class FallbackBackend:
+    """Try TigerGraph first; on any error answer from the local copy and remember that we did."""
+
+    def __init__(self):
+        from .local_graph import LocalGraph
+        self.local = LocalGraph()
+        self.tg = None
+        self.last_source = "local"
+        try:
+            from .tg_graph import TigerGraphBackend
+            self.tg = TigerGraphBackend()
+        except Exception:
+            self.tg = None
+
+    def _call(self, name, *args):
+        if self.tg is not None:
+            try:
+                out = getattr(self.tg, name)(*args)
+                self.last_source = "tigergraph"
+                return out
+            except Exception:
+                pass
+        self.last_source = "local"
+        return getattr(self.local, name)(*args)
+
+    def hops_to_flagged(self, address, max_hops=2):
+        return self._call("hops_to_flagged", address, max_hops)
+
+    def payee_addresses(self, payee):
+        return self._call("payee_addresses", payee)
+
+    def similar_attacks(self, vec, k=3):
+        return self._call("similar_attacks", vec, k)
+
+    def neighbourhood(self, address, depth=2):
+        return self._call("neighbourhood", address, depth)
+
+    def trace_rows(self, address, contents):
+        return self._call("trace_rows", address, contents)
+
+    def learn(self, rec):
+        """Remember in BOTH: the local copy always, TigerGraph if it's awake."""
+        self.local.learn(rec)
+        if self.tg is not None:
+            try:
+                self.tg.learn(rec)
+                self.last_source = "tigergraph"
+            except Exception:
+                pass
+
+    def forget(self, recs):
+        if self.tg is not None:
+            try:
+                self.tg.forget(recs)
+            except Exception:
+                pass
+
+
 def get_backend():
-    """TigerGraph if TG_HOST is set in .env, otherwise the local NetworkX fallback."""
+    """TigerGraph (with local fallback) if TG_HOST is set in .env, otherwise the local copy."""
     global _backend
     if _backend is None:
         if os.getenv("TG_HOST"):
-            from .tg_graph import TigerGraphBackend
-            _backend = TigerGraphBackend()
+            _backend = FallbackBackend()
         else:
             from .local_graph import LocalGraph
             _backend = LocalGraph()
     return _backend
+
+
+def graph_source() -> str:
+    """"tigergraph" or "local": which graph answered the most recent question."""
+    return getattr(get_backend(), "last_source", "local")
+
+
+def neighbourhood(address: str, depth: int = 2) -> dict:
+    return get_backend().neighbourhood(address, depth)
 
 
 def hops_to_flagged(address: str, max_hops: int = 2) -> int | None:
@@ -52,7 +120,8 @@ def attack_pattern_check(tx: ProposedTx, contents: list[ContentItem]) -> CheckRe
     - looks like a known attack AND that attack used
       the very wallet the agent now wants to pay     -> hard fail (meaning + graph agree)
     """
-    untrusted = [c for c in contents if c.trust == "untrusted"]
+    from .taint import effective  # a forwarded scam is still a scam: check it too
+    untrusted = [c for c in effective(contents) if c.trust == "untrusted"]
     if not untrusted:
         return CheckResult("attack_pattern", True, "no untrusted content read", score=0.0, hard=False)
     try:
@@ -65,7 +134,7 @@ def attack_pattern_check(tx: ProposedTx, contents: list[ContentItem]) -> CheckRe
                     return CheckResult(
                         "attack_pattern", False,
                         f"{c.source} matches known {m.category} attack {m.attack_id} "
-                        f"({m.similarity:.2f}) that used this same wallet {tx.to}",
+                        f"({m.similarity:.2f}) that used this same wallet {tx.to}.",
                         score=m.similarity, hard=True)
     except Exception as e:
         return CheckResult("attack_pattern", True,
@@ -77,10 +146,10 @@ def attack_pattern_check(tx: ProposedTx, contents: list[ContentItem]) -> CheckRe
     c, m = best
     if m.similarity >= threshold():
         return CheckResult("attack_pattern", False,
-                           f"{c.source} resembles known {m.category} attack {m.attack_id} ({m.similarity:.2f})",
+                           f"{c.source} resembles known {m.category} attack {m.attack_id} ({m.similarity:.2f}).",
                            score=m.similarity, hard=False)
     return CheckResult("attack_pattern", True,
-                       f"no known attack pattern (closest {m.similarity:.2f})", score=m.similarity, hard=False)
+                       f"No known attack pattern (closest {m.similarity:.2f}).", score=m.similarity, hard=False)
 
 
 def reputation_check(tx: ProposedTx, policy: Policy) -> CheckResult:
@@ -101,14 +170,20 @@ def reputation_check(tx: ProposedTx, policy: Policy) -> CheckResult:
                            hard=False)
 
     if hops == 0:
-        return CheckResult("reputation", False, f"{addr} is a flagged scam wallet")
+        from .learn import lookup
+        seen = lookup(addr)
+        if seen:
+            return CheckResult("reputation", False,
+                               f"Seen before: {addr[:6]}…{addr[-4:]} was used in an attack Provenant blocked "
+                               f"at {seen['ts']} ({seen['source']}).")
+        return CheckResult("reputation", False, f"{addr} is a flagged scam wallet.")
     if hops is not None:
         return CheckResult("reputation", False,
-                           f"{addr} is {hops} hop{'s' if hops > 1 else ''} from a flagged scam wallet")
+                           f"{addr} is {hops} hop{'s' if hops > 1 else ''} from a flagged scam wallet.")
     if known and addr not in known:
         usual = ", ".join(sorted(known))
         return CheckResult("reputation", False,
-                           f"new address for {policy.payee_label}: always paid at {usual}")
+                           f"New address for {policy.payee_label}: always paid at {usual}.")
     if known:
-        return CheckResult("reputation", True, f"usual address for {policy.payee_label}")
-    return CheckResult("reputation", True, "no links to flagged wallets")
+        return CheckResult("reputation", True, f"Usual address for {policy.payee_label}.")
+    return CheckResult("reputation", True, "No links to flagged wallets.")

@@ -1,0 +1,30 @@
+# Taint tracking: trace a wallet address back to where it FIRST came from.
+#   1. Find every piece of content in this session that CONTAINS the address.
+#   2. Walk DERIVED_FROM edges (forwarded / quoted / summarised) back to the originals.
+# Python then decides: the address is trusted only if some copy of it is trusted all the way back.
+
+USE GRAPH provenant
+
+CREATE OR REPLACE QUERY trace_origin(STRING addr, STRING sess) FOR GRAPH provenant {
+  TYPEDEF TUPLE<STRING cid, INT depth, STRING child> Row;
+  OrAccum @seen;
+  ListAccum<Row> @@rows;
+  INT d = 0;
+
+  frontier = SELECT c FROM Content:c -(CONTAINS:e)-> Wallet:w
+             WHERE c.sess == sess AND w.address == addr
+             ACCUM c.@seen += TRUE
+             POST-ACCUM @@rows += Row(c.local_id, 0, "");
+
+  WHILE frontier.size() > 0 AND d < 10 DO
+    d = d + 1;
+    frontier = SELECT p FROM frontier:c -(DERIVED_FROM:e)-> Content:p
+               ACCUM @@rows += Row(p.local_id, d, c.local_id)
+               HAVING p.@seen == FALSE;
+    frontier = SELECT p FROM frontier:p POST-ACCUM p.@seen += TRUE;
+  END;
+
+  PRINT @@rows AS rows;
+}
+
+INSTALL QUERY trace_origin

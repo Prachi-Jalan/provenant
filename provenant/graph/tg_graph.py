@@ -25,6 +25,7 @@ def connect():
 class TigerGraphBackend:
     def __init__(self):
         self.conn = connect()
+        self._written: set[str] = set()   # taint sessions already written
 
     def hops_to_flagged(self, address: str, max_hops: int = 2) -> int | None:
         res = self.conn.runInstalledQuery("hops_to_flagged",
@@ -47,6 +48,59 @@ class TigerGraphBackend:
             matches.append(AttackMatch(row["attack_id"], round(1 - float(row["distance"]), 3),
                                        row["category"], frozenset(wallets.get(row["attack_id"], []))))
         return sorted(matches, key=lambda m: m.similarity, reverse=True)
+
+
+    def neighbourhood(self, address: str, depth: int = 2) -> dict:
+        """Wallets within `depth` SENT_TO hops, from the installed wallet_neighbourhood query."""
+        res = self.conn.runInstalledQuery("wallet_neighbourhood",
+                                          params={"addr": address.lower(), "depth": depth})
+        nodes = {r["address"]: bool(r["flagged"]) for r in _find(res, "wallets")}
+        edges = [(e["a"], e["b"]) for e in _find(res, "links")]
+        return {"nodes": nodes or {address.lower(): False}, "edges": edges}
+
+    # ------------------------------------------------------------ taint graph (#1)
+    def write_session(self, contents) -> str:
+        """Write what the agent read as Source -POSTED-> Content -DERIVED_FROM-> Content -CONTAINS-> Wallet."""
+        from .taint import ADDR_RE, session_id
+        sess = session_id(contents)
+        if sess in self._written:
+            return sess
+        ids = {c.id for c in contents}
+        cid = lambda i: f"{sess}:{i}"
+        self.conn.upsertVertices("Content", [
+            (cid(c.id), {"local_id": c.id, "sess": sess, "src": c.source, "trust": c.trust,
+                         "body": (c.text or "")[:2000]}) for c in contents])
+        self.conn.upsertVertices("Source", [(c.source, {"trust": c.trust}) for c in contents])
+        self.conn.upsertEdges("Source", "POSTED", "Content", [(c.source, cid(c.id), {}) for c in contents])
+        derived = [(cid(c.id), cid(c.derived_from), {}) for c in contents if c.derived_from in ids]
+        if derived:
+            self.conn.upsertEdges("Content", "DERIVED_FROM", "Content", derived)
+        contains = [(cid(c.id), a.lower(), {}) for c in contents for a in set(ADDR_RE.findall(c.text or ""))]
+        if contains:
+            self.conn.upsertEdges("Content", "CONTAINS", "Wallet", contains)
+        self._written.add(sess)
+        return sess
+
+    def trace_rows(self, address: str, contents) -> list[dict]:
+        sess = self.write_session(contents)
+        res = self.conn.runInstalledQuery("trace_origin", params={"addr": address.lower(), "sess": sess})
+        return [{"cid": r["cid"], "depth": int(r["depth"]), "child": r["child"]} for r in _find(res, "rows")]
+
+    # ------------------------------------------------------------ attack memory (#2)
+    def learn(self, rec: dict) -> None:
+        from .embeddings import embed
+        [vec] = embed([rec["text"]])
+        self.conn.upsertVertices("Wallet", [(rec["wallet"], {"flagged": True, "label": f"learned: {rec['source']}"})])
+        self.conn.upsertVertices("AttackPattern", [(rec["id"], {"text": rec["text"], "category": rec["category"],
+                                                                "embedding": vec})])
+        self.conn.upsertEdges("AttackPattern", "USES", "Wallet", [(rec["id"], rec["wallet"], {})])
+        self.conn.upsertVertices("Source", [(rec["source"], {"trust": "untrusted"})])
+        self.conn.upsertEdges("Source", "MENTIONS", "Wallet", [(rec["source"], rec["wallet"], {})])
+
+    def forget(self, recs: list[dict]) -> None:
+        for r in recs:
+            self.conn.delVerticesById("AttackPattern", r["id"])
+            self.conn.upsertVertices("Wallet", [(r["wallet"], {"flagged": bool(r.get("was_flagged"))})])
 
 
 def _find(res: list[dict], key: str) -> list:

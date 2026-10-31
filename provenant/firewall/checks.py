@@ -43,7 +43,17 @@ def policy_check(tx: ProposedTx, policy: Policy) -> CheckResult:
 # ---------------------------------------------------------------- provenance
 
 def provenance_check(tx: ProposedTx, contents: list[ContentItem]) -> CheckResult:
-    """Where did this recipient address come from?"""
+    """Where did this recipient address come from? Traced through the taint graph (P3,
+    graph/taint.py) so forwarding/quoting a scam doesn't make its address trusted.
+    Falls back to the plain text search below if the graph walk fails for any reason."""
+    try:
+        from provenant.graph.taint import provenance_check as traced
+        return traced(tx, contents)
+    except Exception:
+        return _text_provenance(tx, contents)
+
+
+def _text_provenance(tx: ProposedTx, contents: list[ContentItem]) -> CheckResult:
     name = "provenance"
     addr = (tx.to or "").lower()
     if not addr:

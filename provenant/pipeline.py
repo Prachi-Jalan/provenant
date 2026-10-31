@@ -45,6 +45,7 @@ def handle(
     if tx is None:
         return None
     verdict = check(tx, policy, session.log)
+    _remember(verdict, session.log, request)
 
     replans = 0
     while (
@@ -59,6 +60,7 @@ def handle(
         if log:  # the rejected attempt is a real decision too
             verdict_log.log_verdict(verdict, request, requester, channel)
         verdict = check(new_tx, policy, session.log)
+        _remember(verdict, session.log, request)
 
     if verdict.decision in (Decision.ALLOW, Decision.REPAIRED):
         try:
@@ -70,3 +72,13 @@ def handle(
     if log:
         verdict_log.log_verdict(verdict, request, requester, channel)
     return verdict
+
+
+def _remember(verdict: Verdict, contents, request: str) -> None:
+    """Attack memory (P3): write a stopped attack into the graph so it's recognised next time.
+    Never allowed to break a payment, so every error is swallowed."""
+    try:
+        from provenant.graph.learn import learn_from
+        learn_from(verdict, contents, request)
+    except Exception:
+        pass

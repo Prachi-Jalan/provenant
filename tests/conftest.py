@@ -9,7 +9,7 @@ change a test's outcome is cleared (or pinned) before each test.
 import pytest
 
 from provenant import verdict_log
-from provenant.graph import reputation
+from provenant.graph import learn, reputation
 
 _CLEARED = (
     "OWNER_PRIVATE_KEY", "VENDOR_ADDRESS", "ATTACKER_ADDRESS",   # wallet keys / addresses
@@ -27,6 +27,7 @@ def _safe_env(monkeypatch, tmp_path):
     for var in _CLEARED:
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(verdict_log, "LOG_FILE", tmp_path / "logs" / "verdicts.jsonl")
+    monkeypatch.setattr(learn, "LEARNED_FILE", tmp_path / "logs" / "learned_attacks.jsonl")
     reputation._backend = None
     yield
     reputation._backend = None
