@@ -111,3 +111,75 @@ class ContractAgentAdapter:
 
     def replan(self, request: str, requester: str, contents: list[ContentItem], feedback: str) -> list[ProposedTx]:
         return list(self._agent.replan(feedback) or [])
+
+
+class Feedback(str):
+    """The firewall's rejection text, plus the Verdict it came from (agents that need it can read .verdict)."""
+
+    verdict = None
+
+    def __new__(cls, text: str, verdict=None):
+        obj = super().__new__(cls, text)
+        obj.verdict = verdict
+        return obj
+
+
+class RealAgentAdapter:
+    """Adapts Person 1's real agents (provenant.agent.agent.NaiveAgent / LLMAgent).
+
+    Those use act(request, session) and replan(request, session, blocked_verdict) with a Session whose
+    .log is what the firewall sees. This builds that Session from the assistant's contents and copies
+    anything the agent read by itself (contacts, invoices, web pages) back into `contents`, so the
+    firewall's provenance check sees exactly what the agent saw.
+    """
+
+    def __init__(self, agent, owner_id: str = "owner") -> None:
+        self._agent = agent
+        self.owner_id = owner_id
+        self.name = type(agent).__name__
+        self._session = None
+        self._seen = 0
+
+    def _build_session(self, contents: list[ContentItem], preload: str | None = None):
+        from provenant.agent.tools import Session
+
+        session = Session(self.owner_id)
+        if preload:  # scripted NaiveAgent reads nothing itself; P1's demo looks the contact up BEFORE the inbox
+            self._preload_contacts(preload, session)
+        for item in contents:
+            session.log.append(item)
+        self._session = session
+        self._seen = len(session.log)
+        for item in session.log:  # trusted contact records the adapter added are part of what the firewall sees
+            if all(item.id != c.id for c in contents):
+                contents.append(item)
+        return session
+
+    @staticmethod
+    def _preload_contacts(request: str, session) -> None:
+        """Add the owner's TRUSTED address-book entry for any saved name in the owner's request."""
+        text = request.lower()
+        for name in session.known_names():
+            if re.search(rf"\b{re.escape(name)}\b", text):
+                session.lookup_contact(name)
+
+    def _sync(self, contents: list[ContentItem]) -> None:
+        have = {c.id for c in contents}
+        for item in self._session.log[self._seen:]:
+            if item.id not in have:
+                contents.append(item)
+        self._seen = len(self._session.log)
+
+    def propose(self, request: str, requester: str, contents: list[ContentItem]) -> list[ProposedTx]:
+        session = self._build_session(contents, preload=request if not hasattr(self._agent, "client") else None)
+        tx = self._agent.act(request, session)
+        self._sync(contents)
+        return [tx] if tx is not None else []
+
+    def replan(self, request: str, requester: str, contents: list[ContentItem], feedback: str) -> list[ProposedTx]:
+        verdict = getattr(feedback, "verdict", None)
+        if self._session is None or verdict is None:
+            return []
+        tx = self._agent.replan(request, self._session, verdict)
+        self._sync(contents)
+        return [tx] if tx is not None else []

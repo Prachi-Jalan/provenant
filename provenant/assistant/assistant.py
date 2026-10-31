@@ -278,24 +278,40 @@ def _policy_ttl() -> int:
 
 
 def _lookup_balance() -> tuple[float | None, str]:
-    """Best effort: P1's wallet has no balance function in the frozen contract yet."""
+    """Read the owner's USDC balance through chain.wallet (read-only; no key is used to sign)."""
+    import inspect
     import os
 
     dry = os.environ.get("DRY_RUN", "1") != "0"
+    dry_note = "(dry-run mode: payments are simulated.)" if dry else ""
     try:
         from provenant.chain import wallet
     except Exception:
         wallet = None
     for name in ("get_usdc_balance", "usdc_balance", "get_balance", "balance_of"):
         fn = getattr(wallet, name, None) if wallet else None
-        if callable(fn):
-            try:
-                return float(fn()), ("(dry-run mode: payments are simulated.)" if dry else "")
-            except NotImplementedError:
-                break
-            except Exception as e:
-                return None, f"Could not read the balance: {type(e).__name__}: {e}"
+        if not callable(fn):
+            continue
+        try:
+            needs_address = any(
+                p.default is p.empty and p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+                for p in inspect.signature(fn).parameters.values()
+            )
+        except (TypeError, ValueError):
+            needs_address = False
+        try:
+            if needs_address:
+                lister = getattr(wallet, "_wallet_addresses", None)
+                owner = (lister() if callable(lister) else {}).get("owner")
+                if not owner:
+                    return None, "I need the owner wallet to check its balance: set OWNER_PRIVATE_KEY in .env."
+                return float(fn(owner)), dry_note
+            return float(fn()), dry_note
+        except NotImplementedError:
+            break
+        except Exception as e:
+            return None, f"Could not read the balance: {type(e).__name__}: {e}"
     return None, (
-        "Balance lookup isn't wired yet (Person 1: add chain.wallet.get_usdc_balance()). "
+        "Balance lookup isn't wired yet (Person 1: add chain.wallet.get_usdc_balance(address)). "
         + ("Dry-run mode is on, so no real funds move." if dry else "")
     ).strip()
