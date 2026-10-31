@@ -20,6 +20,26 @@ class LocalGraph:
         self.paid_at: dict[str, set[str]] = {}
         for payee, addr, _times in data.paid_at:
             self.paid_at.setdefault(payee.lower(), set()).add(addr)
+        from .learn import load as load_learned
+        for rec in load_learned():   # attacks Provenant blocked earlier (attack memory)
+            self._flag(rec)
+
+    def _flag(self, rec: dict) -> None:
+        w = rec["wallet"]
+        if w not in self.g:
+            self.g.add_node(w, flagged=True, label=f"learned: {rec['source']}")
+        else:
+            self.g.nodes[w]["flagged"] = True
+
+    def learn(self, rec: dict) -> None:
+        self._flag(rec)
+        if hasattr(self, "_attacks"):
+            self._attacks.append(_as_attack(rec))
+            self._vecs.extend(embed([rec["text"]]))
+
+    def trace_rows(self, address: str, contents) -> list[dict]:
+        from .taint import local_rows
+        return local_rows(address, contents)
 
     def hops_to_flagged(self, address: str, max_hops: int = 2) -> int | None:
         addr = address.lower()
@@ -33,13 +53,28 @@ class LocalGraph:
     def payee_addresses(self, payee: str) -> set[str]:
         return self.paid_at.get(payee.lower(), set())
 
+    def neighbourhood(self, address: str, depth: int = 2) -> dict:
+        """Wallets within `depth` SENT_TO hops: {"nodes": {addr: flagged}, "edges": [(a, b)]}."""
+        addr = address.lower()
+        if addr not in self.g:
+            return {"nodes": {addr: False}, "edges": []}
+        sub = nx.ego_graph(self.g, addr, radius=depth)
+        return {"nodes": {n: bool(self.g.nodes[n].get("flagged")) for n in sub.nodes},
+                "edges": [tuple(e) for e in sub.edges]}
+
     def similar_attacks(self, query_vec: list[float], k: int = 3) -> list[AttackMatch]:
         """Brute-force cosine search over every known attack (fine for ~50 items)."""
         if not hasattr(self, "_attacks"):
-            self._attacks = load_attacks()
+            from .learn import load as load_learned
+            self._attacks = load_attacks() + [_as_attack(r) for r in load_learned()]
             self._vecs = embed([a["text"] for a in self._attacks])
         scored = sorted(zip((cosine(query_vec, v) for v in self._vecs), self._attacks),
                         key=lambda p: p[0], reverse=True)[:k]
         return [AttackMatch(a["id"], round(s, 3), a["category"],
                             frozenset([a["wallet"]] if a.get("wallet") else []))
                 for s, a in scored]
+
+
+def _as_attack(rec: dict) -> dict:
+    return {"id": rec["id"], "text": rec["text"], "category": rec.get("category", "previously blocked"),
+            "wallet": rec["wallet"]}

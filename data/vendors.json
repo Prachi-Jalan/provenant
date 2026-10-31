@@ -4,5 +4,14 @@
     "typical_min": 400,
     "typical_max": 600,
     "paid_count": 5
+  },
+  "Tanishk": {
+    "address": "0x7a4151c0000000000000000000000000000000c8",
+    "typical_min": 20,
+    "typical_max": 60,
+    "paid_count": 2,
+    "business": "Tanishk's Kitchen",
+    "role": "caterer",
+    "balance_due": 45
   }
 }

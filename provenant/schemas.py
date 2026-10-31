@@ -22,6 +22,9 @@ class ContentItem:
     source: str             # e.g. "telegram:owner", "telegram:@stranger", "web:https://..."
     trust: Trust
     text: str
+    # id of the item this one forwards / quotes / summarises (taint tracking, see graph/taint.py).
+    # An item is only as trusted as everything it was derived from.
+    derived_from: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)

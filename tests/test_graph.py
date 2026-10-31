@@ -61,12 +61,12 @@ def test_rahul_swap_attack_fails():
 def test_fake_invoice_new_address_fails():
     fresh = "0x" + "7" * 40  # not near any scammer, but not Acme's usual address
     r = reputation.reputation_check(_tx(fresh), _policy("Acme", ACME))
-    assert not r.passed and "new address for acme" in r.reason
+    assert not r.passed and "new address for acme" in r.reason.lower()
 
 
 def test_legit_payment_passes():
     r = reputation.reputation_check(_tx(RAHUL), _policy("Rahul", RAHUL))
-    assert r.passed and "usual address" in r.reason
+    assert r.passed and "usual address" in r.reason.lower()
 
 
 def test_graph_down_is_soft_pass(monkeypatch):
@@ -75,3 +75,25 @@ def test_graph_down_is_soft_pass(monkeypatch):
     monkeypatch.setattr(reputation, "_backend", Broken())
     r = reputation.reputation_check(_tx(RAHUL), _policy("Rahul", RAHUL))
     assert r.passed and not r.hard and "unavailable" in r.reason
+
+
+# --- demo-screen helpers -------------------------------------------------------
+
+def test_neighbourhood_shows_scam_links():
+    n = reputation.neighbourhood(MULE)
+    assert n["nodes"][MULE] is False
+    assert any(flag for flag in n["nodes"].values())          # a flagged wallet is within 2 hops
+    assert any(MULE in e for e in n["edges"])
+
+
+def test_tigergraph_down_falls_back_to_local(monkeypatch):
+    class Dead:
+        def __getattr__(self, name):
+            def boom(*a, **k): raise ConnectionError("asleep")
+            return boom
+    fb = reputation.FallbackBackend.__new__(reputation.FallbackBackend)
+    from provenant.graph.local_graph import LocalGraph
+    fb.local, fb.tg, fb.last_source = LocalGraph(), Dead(), "local"
+    monkeypatch.setattr(reputation, "_backend", fb)
+    assert reputation.hops_to_flagged(MULE) == 1               # answered by the local copy
+    assert reputation.graph_source() == "local"

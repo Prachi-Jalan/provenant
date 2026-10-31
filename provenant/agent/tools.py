@@ -169,10 +169,20 @@ class Session:
 
     # ---- untrusted inputs ------------------------------------------------- #
     def read_invoice(self, name: str) -> list[ContentItem]:
-        """untrusted, from data/invoices/<name>.json. Unknown name -> []."""
-        stem = (name or "").strip().removesuffix(".json")
+        """untrusted, from data/invoices/<name>.json or <name>.pdf. Unknown name -> [].
+        PDFs are read with a real text extractor, hidden (tiny / white) text included,
+        which is exactly what a real agent would see."""
+        stem = (name or "").strip().removesuffix(".json").removesuffix(".pdf")
+        if not _SAFE_NAME.match(stem):
+            return []
+        pdf = self.data_dir / "invoices" / f"{stem}.pdf"
+        if pdf.exists():
+            from provenant.pdf_reader import read_pdf
+            return self._add(ContentItem(
+                id=f"invoice_{stem}", source=f"invoice:{stem}.pdf", trust="untrusted",
+                text=read_pdf(pdf).text))
         path = self.data_dir / "invoices" / f"{stem}.json"
-        if not _SAFE_NAME.match(stem) or not path.exists():
+        if not path.exists():
             return []
         raw = json.loads(path.read_text(encoding="utf-8"))
         return self._add(ContentItem(
@@ -180,7 +190,8 @@ class Session:
             text=f"Invoice {stem}:\n{json.dumps(raw, indent=2)}"))
 
     def invoice_names(self) -> list[str]:
-        return sorted(p.stem for p in (self.data_dir / "invoices").glob("*.json"))
+        folder = self.data_dir / "invoices"
+        return sorted({p.stem for p in folder.glob("*.json")} | {p.stem for p in folder.glob("*.pdf")})
 
     def fetch_webpage(self, url: str) -> list[ContentItem]:
         """untrusted; keeps hidden text and HTML comments."""

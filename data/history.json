@@ -1,0 +1,44 @@
+[
+  {
+    "date": "2026-10-12",
+    "kind": "calendar",
+    "what": "My birthday party at home. Catering by Tanishk's Kitchen (40 guests). Balance of 45 USDC due after the party.",
+    "payee": "Tanishk",
+    "balance_due": 45
+  },
+  {
+    "date": "2026-10-08",
+    "kind": "payment",
+    "what": "Deposit for birthday party catering",
+    "payee": "Tanishk",
+    "amount": 20
+  },
+  {
+    "date": "2026-10-11",
+    "kind": "payment",
+    "what": "Birthday cake, chocolate truffle",
+    "payee": "Priya",
+    "amount": 12
+  },
+  {
+    "date": "2026-09-28",
+    "kind": "payment",
+    "what": "Packaging materials, September batch",
+    "payee": "Acme",
+    "amount": 500
+  },
+  {
+    "date": "2026-10-20",
+    "kind": "payment",
+    "what": "Dinner split after the movie",
+    "payee": "Rahul",
+    "amount": 15
+  },
+  {
+    "date": "2026-09-02",
+    "kind": "payment",
+    "what": "Office lunch catering trial",
+    "payee": "Tanishk",
+    "amount": 18
+  }
+]
