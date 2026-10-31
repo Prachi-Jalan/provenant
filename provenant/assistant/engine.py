@@ -23,7 +23,7 @@ from typing import Any, Callable
 
 from provenant.schemas import ContentItem, Decision, ProposedTx
 
-from .offline_agent import ContractAgentAdapter, OfflineNaiveAgent
+from .offline_agent import ContractAgentAdapter, Feedback, OfflineNaiveAgent, RealAgentAdapter
 
 SEND_DECISIONS = (Decision.ALLOW, Decision.REPAIRED)
 
@@ -68,7 +68,7 @@ def load_agent(name: str | None = None):
     if name in ("p1-naive", "p1-llm"):
         cls_name = "NaiveAgent" if name == "p1-naive" else "LLMAgent"
         cls = None
-        for mod in ("provenant.agent", "provenant.agent.agent"):
+        for mod in ("provenant.agent.agent", "provenant.agent"):
             try:
                 cls = getattr(importlib.import_module(mod), cls_name, None)
             except Exception:
@@ -77,7 +77,9 @@ def load_agent(name: str | None = None):
                 break
         if cls is None:
             raise RuntimeError(f"Could not import {cls_name} from provenant.agent. Use ASSISTANT_AGENT=naive.")
-        return ContractAgentAdapter(cls())
+        obj = cls()
+        # Person 1's real agents use act(request, session); CONTRACTS.md-style ones use propose(...)
+        return RealAgentAdapter(obj) if hasattr(obj, "act") else ContractAgentAdapter(obj)
     raise ValueError(f"Unknown agent '{name}'. Use naive, p1-naive or p1-llm.")
 
 
@@ -94,6 +96,8 @@ class PaymentEngine:
     ) -> None:
         self.agent = agent or load_agent()
         self.owner_id = owner_id
+        if hasattr(self.agent, "owner_id"):
+            self.agent.owner_id = owner_id
         self.channel = channel or os.environ.get("ASSISTANT_CHANNEL", "demo")  # "demo" is in the contract
         self._send_fn = send_fn
         self._log_fn = log_fn
@@ -113,7 +117,7 @@ class PaymentEngine:
         owner_asked = requester == self.owner_id and bool(policy.allowed_recipients)
         blocked = [v for v in result.verdicts if v.decision == Decision.BLOCK]
         if not sent and owner_asked and blocked:
-            feedback = " ".join(v.message for v in blocked)
+            feedback = Feedback(" ".join(v.message for v in blocked), blocked[0])
             retry = list(self.agent.replan(request, requester, contents, feedback) or [])
             result.replan_from = len(result.verdicts)
             result.proposals += len(retry)
