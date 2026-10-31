@@ -223,3 +223,7 @@ models/
 
 # Provenant attack memory (local copy; the real one lives in TigerGraph)
 logs/learned_attacks.jsonl
+
+# build/scratch archives and runtime logs
+*.zip
+logs/*.jsonl

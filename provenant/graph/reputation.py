@@ -14,6 +14,10 @@ from .embeddings import embed, threshold
 _backend = None
 
 
+def _short(addr: str) -> str:
+    return f"{addr[:6]}…{addr[-4:]}" if addr and len(addr) > 12 else str(addr)
+
+
 class FallbackBackend:
     """Try TigerGraph first; on any error answer from the local copy and remember that we did."""
 
@@ -134,7 +138,7 @@ def attack_pattern_check(tx: ProposedTx, contents: list[ContentItem]) -> CheckRe
                     return CheckResult(
                         "attack_pattern", False,
                         f"{c.source} matches known {m.category} attack {m.attack_id} "
-                        f"({m.similarity:.2f}) that used this same wallet {tx.to}.",
+                        f"({m.similarity:.2f}) that used this same wallet {_short(tx.to)}.",
                         score=m.similarity, hard=True)
     except Exception as e:
         return CheckResult("attack_pattern", True,
@@ -176,12 +180,12 @@ def reputation_check(tx: ProposedTx, policy: Policy) -> CheckResult:
             return CheckResult("reputation", False,
                                f"Seen before: {addr[:6]}…{addr[-4:]} was used in an attack Provenant blocked "
                                f"at {seen['ts']} ({seen['source']}).")
-        return CheckResult("reputation", False, f"{addr} is a flagged scam wallet.")
+        return CheckResult("reputation", False, f"{_short(addr)} is a flagged scam wallet.")
     if hops is not None:
         return CheckResult("reputation", False,
-                           f"{addr} is {hops} hop{'s' if hops > 1 else ''} from a flagged scam wallet.")
+                           f"{_short(addr)} is {hops} hop{'s' if hops > 1 else ''} from a flagged scam wallet.")
     if known and addr not in known:
-        usual = ", ".join(sorted(known))
+        usual = ", ".join(_short(a) for a in sorted(known))
         return CheckResult("reputation", False,
                            f"New address for {policy.payee_label}: always paid at {usual}.")
     if known:

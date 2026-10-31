@@ -3,7 +3,7 @@
 Real-looking story:
   - 2 flagged scam wallets that both pay a "mule" wallet (0xe011...e1).
   - The mule is the address the scammer puts in fake invoices / chat messages.
-  - Rahul, Priya and Acme each have a verified address we've paid before.
+  - Every contact/vendor in data/ (Rahul, Priya, Acme, Tanishk) has a verified address we've paid before.
   - ~40 random "background" wallets with random transfers, so the graph isn't trivially small.
 """
 from __future__ import annotations
